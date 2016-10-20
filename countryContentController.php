@@ -80,12 +80,12 @@ function ccc_init(){
           </p>
           <span class="label label-primary">Hide</span>
           <p>
-            If you set the controller to hide, when a user from the specified country comes to your website, the plugin will hide the tageted div id.
+            If you set the controller to hide, when a user from the specified country comes to your website, the plugin will hide the tageted div id. Meanwhile, anyone outside of this country will have the reverse affect and the div will be set to Show.
           </p>
           <br />
           <span class="label label-primary">Show</span>
           <p>
-            If you set the controller to show, when a user from the specified country comes to your website, the plugin will show the tageted div id.
+            If you set the controller to show, when a user from the specified country comes to your website, the plugin will show the tageted div id. Meanwhile, anyone outside of this country will have the reverse affect and the div will be set to Hide.
           </p>
         </div>
         </div>
@@ -120,13 +120,13 @@ function ccc_init(){
       <div class="col-sm-8">
       <h2>Examples:</h2>
       <div class="panel panel-success">
-        <div class="panel-heading">Hide the div <b>contactForm</b> if the user is from the United States</div>
+        <div class="panel-heading">Hide the div <b>contactForm</b> if the user is from the United States and show to everyone else.</div>
         <div class="panel-body">
           [CCC controller="hide" divid="contactForm" cc="US"]
         </div>
       </div>
       <div class="panel panel-success">
-        <div class="panel-heading">Show the div <b>freeDownload</b> if the user is from the Japan</div>
+        <div class="panel-heading">Show the div <b>freeDownload</b> if the user is from Japan and hide it from everyone else.</div>
         <div class="panel-body">
           [CCC controller="show" divid="freeDownload" cc="JP"]
         </div>
@@ -139,23 +139,39 @@ function ccc_init(){
 
 // [CCC] Code
 function cccWrapper( $creds, $content = null ) {
+
+  //Break Down Attributes
 	$CCC = shortcode_atts( array (
 			'controller' => '',
       'divid' => '',
 			'cc' => ''
 		), $creds );
 
-    //Get users ip and find country
-    if( isset($_REQUEST['']) ){
-    $ip = $_REQUEST["REMOTE_ADDR"]; // the IP address to query
-    }
+    //try and fetch the users ip
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ip = $_SERVER['HTTP_CLIENT_IP'];
+      }
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+      }
+    else {
+        $ip = $_SERVER['REMOTE_ADDR'];
+      }
+
+  if (!empty($ip)){
     $query = @unserialize(file_get_contents('http://ip-api.com/php/'.$ip));
     // $query['country']
     if($query && $query['status'] == 'success') {
-    $ccBrowser = strtoupper($query['countryCode']);
-    $ccInput = strtoupper($CCC['cc']);
-    $cccSwitch = $CCC['controller'];
-    switch ($cccSwitch) {
+
+      //remove case sensitive issues
+      $ccBrowser = strtoupper($query['countryCode']);
+      $ccInput = strtoupper($CCC['cc']);
+
+      //build controller switch
+      $cccSwitch = $CCC['controller'];
+
+      //set our switch case
+      switch ($cccSwitch) {
         case "show":
             $displayAction='block';
             $displayActionFalse='none';
@@ -169,25 +185,31 @@ function cccWrapper( $creds, $content = null ) {
         default:
             $displayAction='';
             $cccContinue='false';
-    }
+      }
+
       if ($cccContinue == 'true') {
         $cccDivID = $CCC['divid'];
         if ($ccBrowser == $ccInput) {
-          echo "You are:$ccBrowser <br />";
-          echo "Your short tag is set to: $ccInput";
-        }
-        elseif ($ccBrowser !== $ccInput) {
           ?>
           <style>
           #<?php echo $cccDivID; ?> {
-            display: <?php echo $displayActionFalse; ?>;
+            display: <?php echo $displayAction; ?>;
           }
           </style>
           <?php
         }
+          elseif ($ccBrowser !== $ccInput) {
+            ?>
+            <style>
+            #<?php echo $cccDivID; ?> {
+              display: <?php echo $displayActionFalse; ?>;
+            }
+            </style>
+            <?php
+          }
+        }
       }
-
-
     }
+
 }
 add_shortcode( 'CCC', 'cccWrapper' );
